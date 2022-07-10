@@ -9,9 +9,7 @@ import open_clip as clip
 import torch
 import torchvision.transforms as T
 import torchvision.transforms.functional as TF
-from IPython import display
 from docarray import DocumentArray, Document
-from ipywidgets import Output
 
 from .config import print_args_table
 from .helper import logger, PromptParser
@@ -20,6 +18,17 @@ from .nn.make_cutouts import MakeCutoutsDango
 from .nn.sec_diff import alpha_sigma_to_t
 from .nn.transform import symmetry_transformation_fn
 
+try: 
+    from IPython import display
+    from ipywidgets import Output
+except ImportError:
+    class Nothing:
+        def __call__(self, *args, **kwargs):
+            return Nothing()
+
+        __getattr__ = __enter__ = __exit__ = __call__
+
+    display = Output = Nothing()
 
 def do_run(args, models, device) -> 'DocumentArray':
     _set_seed(args.seed)

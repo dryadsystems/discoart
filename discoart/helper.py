@@ -60,8 +60,10 @@ def _clone_repo_install(repo_url, repo_dir, commit_hash):
             return
 
     import shutil
-
-    shutil.rmtree(repo_dir)
+    try:
+        shutil.rmtree(repo_dir)
+    except FileNotFoundError:
+        pass
     res = subprocess.run(
         ['git', 'clone', '--depth', '1', repo_url, repo_dir], stdout=subprocess.PIPE
     ).stdout.decode('utf-8')
@@ -258,7 +260,7 @@ def load_all_models(
                 model_secondary_downloaded = True
             else:
                 logger.debug('First URL Failed using FallBack')
-                load_all_models(diffusion_model, use_secondary_model, True)
+                load_all_models(diffusion_model, use_secondary_model, True, device)
 
     from guided_diffusion.script_util import (
         model_and_diffusion_defaults,

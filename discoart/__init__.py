@@ -10,6 +10,14 @@ __version__ = '0.1.3'
 
 __all__ = ['create']
 
+
+class Nothing:
+    def __call__(self, *args, **kwargs):
+        return Nothing()
+
+    __getattr__ = __enter__ = __exit__ = __call__
+
+
 import sys
 
 __resources_path__ = os.path.join(
@@ -29,10 +37,11 @@ import torch
 if torch.cuda.is_available():
     device = torch.device('cuda:0')
 else:
-    raise RuntimeError(
-        'CUDA is not available. DiscoArt is unbearably slow on CPU. '
-        'Please switch to GPU device, if you are using Google Colab, then free tier would work.'
-    )
+    device = torch.device("cpu")
+    # raise RuntimeError(
+    #     'CUDA is not available. DiscoArt is unbearably slow on CPU. '
+    #     'Please switch to GPU device, if you are using Google Colab, then free tier would work.'
+    # )
 
 # download and load models, this will take some time on the first load
 
@@ -210,8 +219,10 @@ def create(**kwargs) -> Optional['DocumentArray']:
         if not os.path.exists(f'{_name}.protobuf.lz4'):
             # not even a single document was created
             return
-
-        from IPython import display
+        try: 
+            from IPython import display
+        except ImportError:
+            display = Nothing()
 
         display.clear_output(wait=True)
 
@@ -225,7 +236,10 @@ def create(**kwargs) -> Optional['DocumentArray']:
         result = _da
 
         print_args_table(vars(_args))
-        from IPython.display import FileLink, display
+        try:
+            from IPython.display import FileLink, display
+        except ImportError:
+            FileLink = display = Nothing()
 
         persist_file = FileLink(
             f'{_name}.protobuf.lz4',
