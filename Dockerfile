@@ -1,11 +1,12 @@
-FROM python:3.8 as libbuilder
+FROM python:3.10 as libbuilder
 WORKDIR /app
-RUN python3.8 -m venv /app/venv 
+RUN python3.10 -m venv /app/venv 
 ENV VIRTUAL_ENV=/app/venv 
 RUN /app/venv/bin/pip install \
     numpy \
     torch torchvision --extra-index-url https://download.pytorch.org/whl/cu116 \
-    discoart #IPython
+    discoart \
+    TwitterAPI "psycopg[pool, binary]" requests
 
 # .cache/discoart, ~/.cache/clip
 
@@ -19,16 +20,19 @@ WORKDIR /app/
 
 # Build with some basic utilities
 
-RUN apt-get update && apt-get install -y \
-    python3-pip \
-    apt-utils \
-    git wget \
-    && apt-get autoremove -y \
-    && rm -rf /var/lib/{apt,dpkg,cache,log}/
+ENV DEBIAN_FRONTEND="noninteractive"
+RUN apt-get update && apt-get install -y software-properties-common \ 
+  && add-apt-repository ppa:deadsnakes/ppa \ 
+  && apt-get install -y python3.10 python3.10-venv git wget apt-utils \
+  && apt-get remove -y python3.8 python3-minimal \
+  && apt-get autoremove -y \
+  && rm -rf /var/lib/{apt,dpkg,cache,log}/
 
 # alias python='python3'
-RUN ln -s /usr/bin/python3 /usr/bin/python
-COPY --from=libbuilder /app/venv/lib/python3.8/site-packages /app/
-
+#RUN ln -s /usr/bin/python3 /usr/bin/python
+COPY --from=libbuilder /app/venv/lib/python3.10/site-packages /app/
+RUN mkdir /app/output
 COPY ./discoart/ /app/discoart/
-RUN python3 -c "import discoart; discoart.create(steps=2, diffusion_sampling_mode='plms', width_height=[10, 10])" || true
+RUN python3.10 -c "import discoart; discoart.create(steps=2, diffusion_sampling_mode='plms', width_height=[10, 10])" || true
+COPY ./pqueue.py ./config.py ./run.py /app/
+ENTRYPOINT ["/usr/bin/python3.10", "/app/run.py"]
