@@ -28,7 +28,7 @@ username = "@dreambs3"
 
 hostname = socket.gethostname()
 
-admin_signal_url = "https://imogen-renaissance.fly.dev"
+admin_signal_url = "https://imogen.fly.dev"
 
 
 def mk_slug(text: Union[str, list[str]], _time: str = "") -> str:
@@ -55,7 +55,7 @@ class Prompt:
     "holds database result with prompt information"
     prompt_id: int
     prompt: str
-    url: str
+    webhook: str
     inserted_ts: datetime
     slug: str = ""
     params: str = ""
@@ -67,7 +67,9 @@ class Prompt:
             assert isinstance(self.param_dict, dict)
         except (json.JSONDecodeError, AssertionError):
             self.param_dict = {}
-        self.slug = str(self.prompt_id) #mk_slug(self.prompt, self.inserted_ts.isoformat())
+        self.slug = str(
+            self.prompt_id
+        )  # mk_slug(self.prompt, self.inserted_ts.isoformat())
 
 
 @dataclasses.dataclass
@@ -141,8 +143,8 @@ class Maestro:
         # try to select something
         maybe_id = conn.execute(
             """SELECT id FROM prompt_queue WHERE status='pending'
-            AND selector=%s ORDER BY id asc LIMIT 1;""",
-            [os.getenv("SELECTOR")],
+            AND model=%s ORDER BY id asc LIMIT 1;""",
+            [os.getenv("MODEL")],
         ).fetchone()
         if not maybe_id:
             return None
@@ -151,7 +153,7 @@ class Maestro:
         logging.info("getting")
         # mark it as assigned, returning only if it got updated
         maybe_prompt = cursor.execute(
-            "UPDATE prompt_queue SET status='assigned', assigned_at=now(), hostname=%s WHERE id = %s RETURNING id AS prompt_id, prompt, params, url, inserted_ts;",
+            "UPDATE prompt_queue SET status='assigned', assigned_at=now(), hostname=%s WHERE id = %s RETURNING id AS prompt_id, prompt, params, webhook, inserted_ts;",
             [hostname, prompt_id],
         ).fetchone()
         if not maybe_prompt:
@@ -184,12 +186,11 @@ class Maestro:
                     generator, result = self.handle_item(generator, prompt)
                     # success
                     start_post = time.time()
-                    set_upload = """UPDATE prompt_queue SET status='uploading', loss=%s, elapsed_gpu=%s, filepath=%s, seed=%s WHERE id=%s;"""
+                    set_upload = """UPDATE prompt_queue SET status='uploading', elapsed_gpu=%s, url=%s, generation_info=%s::jsonb WHERE id=%s;"""
                     params = [
-                        result.loss,
                         result.elapsed,
-                        prompt.slug + ".png",
-                        result.seed,
+                        f"https://fqbyocakhbhchhfvnkcu.supabase.co/storage/v1/object/public/imoges/{prompt.prompt_id}.png",
+                        json.dumps({"seed": result.seed, "loss": result.loss}),
                         prompt.prompt_id,
                     ]
                     logging.info("set uploading %s", prompt)
@@ -281,8 +282,8 @@ class Maestro:
         for i in range(3):
             try:
                 resp = requests.post(
-                    f"{prompt.url or admin_signal_url}/attachment",
-                    params={"message": message, "id": str(prompt.prompt_id)},
+                    f"{prompt.webhook or admin_signal_url}/attachment",
+                    params={"message": message, "id": "-1"}, #str(prompt.prompt_id)},
                     files={"image": f},
                 )
                 logging.info(resp)
@@ -295,7 +296,7 @@ class Maestro:
         bearer = "Bearer " + config.get_secret("SUPABASE_API_KEY")
         mime = "video/mp4" if result.filepath.endswith("mp4") else "image/png"
         requests.post(
-            f"https://mcltajcadcrkywecsigc.supabase.in/storage/v1/object/imoges/{prompt.slug}.png",
+            f"https://fqbyocakhbhchhfvnkcu.supabase.co/storage/v1/object/imoges/{prompt.slug}.png",
             headers={"Authorization": bearer, "Content-Type": mime},
             data=open(result.filepath, mode="rb").read(),
         )
