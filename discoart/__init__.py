@@ -1,3 +1,8 @@
+from typing import TYPE_CHECKING, overload, List, Optional
+from .helper import load_all_models, load_diffusion_model, load_clip_models
+import torch
+import gc
+import sys
 import os
 import warnings
 from types import SimpleNamespace
@@ -18,8 +23,6 @@ class Nothing:
     __getattr__ = __enter__ = __exit__ = __call__
 
 
-import sys
-
 __resources_path__ = os.path.join(
     os.path.dirname(
         sys.modules.get(__package__).__file__
@@ -29,10 +32,8 @@ __resources_path__ = os.path.join(
     'resources',
 )
 
-import gc
 
 # check if GPU is available
-import torch
 
 if torch.cuda.is_available():
     device = torch.device('cuda:0')
@@ -45,7 +46,6 @@ else:
 
 # download and load models, this will take some time on the first load
 
-from .helper import load_all_models, load_diffusion_model, load_clip_models
 
 model_config, secondary_model = load_all_models(
     '512x512_diffusion_uncond_finetune_008100',
@@ -53,7 +53,6 @@ model_config, secondary_model = load_all_models(
     device=device,
 )
 
-from typing import TYPE_CHECKING, overload, List, Optional
 
 if TYPE_CHECKING:
     from docarray import DocumentArray, Document
@@ -129,10 +128,12 @@ def create(
     :param cutn_batches: Each iteration, the AI cuts the image into smaller pieces known as cuts, and compares each cut to the prompt to decide how to guide the next diffusion step.  More cuts can generally lead to better images, since DD has more chances to fine-tune the image precision in each timestep.  Additional cuts are memory intensive, however, and if DD tries to evaluate too many cuts at once, it can run out of memory.  You can use cutn_batches to increase cuts per timestep without increasing memory usage. At the default settings, DD is scheduled to do 16 cuts per timestep.  If cutn_batches is set to 1, there will indeed only be 16 cuts total per timestep. However, if cutn_batches is increased to 4, DD will do 64 cuts total in each timestep, divided into 4 sequential batches of 16 cuts each.  Because the cuts are being evaluated only 16 at a time, DD uses the memory required for only 16 cuts, but gives you the quality benefit of 64 cuts.  The tradeoff, of course, is that this will take ~4 times as long to render each image.So, (scheduled cuts) x (cutn_batches) = (total cuts per timestep). Increasing cutn_batches will increase render times, however, as the work is being done sequentially.  DD’s default cut schedule is a good place to start, but the cut schedule can be adjusted in the Cutn Scheduling section, explained below.
     :param diffusion_model: Diffusion_model of choice.
     :param use_secondary_model: Option to use a secondary purpose-made diffusion model to clean up interim diffusion images for CLIP evaluation.    If this option is turned off, DD will use the regular (large) diffusion model.    Using the secondary model is faster - one user reported a 50% improvement in render speed! However, the secondary model is much smaller, and may reduce image quality and detail.  I suggest you experiment with this.
-    :param diffusion_sampling_mode: Two alternate diffusion denoising algorithms. ddim has been around longer, and is more established and tested.  plms is a newly added alternate method that promises good diffusion results in fewer steps, but has not been as fully tested and may have side effects. This new plms mode is actively being researched in the #settings-and-techniques channel in the DD Discord.
+    #settings-and-techniques channel in the DD Discord.
+    :param diffusion_sampling_mode: Two alternate diffusion denoising algorithms. ddim has been around longer, and is more established and tested.  plms is a newly added alternate method that promises good diffusion results in fewer steps, but has not been as fully tested and may have side effects. This new plms mode is actively being researched in the
     :param perlin_init: Normally, DD will use an image filled with random noise as a starting point for the diffusion curve.  If perlin_init is selected, DD will instead use a Perlin noise model as an initial state.  Perlin has very interesting characteristics, distinct from random noise, so it’s worth experimenting with this for your projects. Beyond perlin, you can, of course, generate your own noise images (such as with GIMP, etc) and use them as an init_image (without skipping steps). Choosing perlin_init does not affect the actual diffusion process, just the starting point for the diffusion. Please note that selecting a perlin_init will replace and override any init_image you may have specified.  Further, because the 2D, 3D and video animation systems all rely on the init_image system, if you enable Perlin while using animation modes, the perlin_init will jump in front of any previous image or video input, and DD will NOT give you the expected sequence of coherent images. All of that said, using Perlin and animation modes together do make a very colorful rainbow effect, which can be used creatively.
     :param perlin_mode: sets type of Perlin noise: colored, gray, or a mix of both, giving you additional options for noise types. Experiment to see what these do in your projects.
-    :param seed: Deep in the diffusion code, there is a random number ‘seed’ which is used as the basis for determining the initial state of the diffusion.  By default, this is random, but you can also specify your own seed.  This is useful if you like a particular result and would like to run more iterations that will be similar. After each run, the actual seed value used will be reported in the parameters report, and can be reused if desired by entering seed # here.  If a specific numerical seed is used repeatedly, the resulting images will be quite similar but not identical.
+    # here.  If a specific numerical seed is used repeatedly, the resulting images will be quite similar but not identical.
+    :param seed: Deep in the diffusion code, there is a random number ‘seed’ which is used as the basis for determining the initial state of the diffusion.  By default, this is random, but you can also specify your own seed.  This is useful if you like a particular result and would like to run more iterations that will be similar. After each run, the actual seed value used will be reported in the parameters report, and can be reused if desired by entering seed
     :param eta: eta (greek letter η) is a diffusion model variable that mixes in a random amount of scaled noise into each timestep. 0 is no noise, 1.0 is more noise. As with most DD parameters, you can go below zero for eta, but it may give you unpredictable results. The steps parameter has a close relationship with the eta parameter. If you set eta to 0, then you can get decent output with only 50-75 steps. Setting eta to 1.0 favors higher step counts, ideally around 250 and up. eta has a subtle, unpredictable effect on image, so you’ll need to experiment to see how this affects your projects.
     :param clamp_grad: As I understand it, clamp_grad is an internal limiter that stops DD from producing extreme results.  Try your images with and without clamp_grad. If the image changes drastically with clamp_grad turned off, it probably means your clip_guidance_scale is too high and should be reduced.
     :param clamp_max: Sets the value of the clamp_grad limitation. Default is 0.05, providing for smoother, more muted coloration in images, but setting higher values (0.15-0.3) can provide interesting contrast and vibrancy.
@@ -144,7 +145,8 @@ def create(
     :param display_rate: During a diffusion run, you can monitor the progress of each image being created with this variable.  If display_rate is set to 50, DD will show you the in-progress image every 50 timesteps. Setting this to a lower value, like 5 or 10, is a good way to get an early peek at where your image is heading. If you don’t like the progression, just interrupt execution, change some settings, and re-run.  If you are planning a long, unmonitored batch, it’s better to set display_rate equal to steps, because displaying interim images does slow Colab down slightly.
     :param n_batches: This variable sets the number of still images you want DD to create.  If you are using an animation mode (see below for details) DD will ignore n_batches and create a single set of animated frames based on the animation settings.
     :param batch_name: The name of the batch, the batch id will be named as "discoart-[batch_name]-seed". To avoid your artworks be overridden by other users, please use a unique name.
-    :param clip_models: CLIP Model selectors. These various CLIP models are available for you to use during image generation.  Models have different styles or ‘flavors,’ so look around.  You can mix in multiple models as well for different results. However, keep in mind that some models are extremely memory-hungry, and turning on additional models will take additional memory and may cause a crash.Also supported open_clip pretrained models, use `::` to separate model name and pretrained weight name, e.g. `ViT-B/32::laion2b_e16`. Full list of models and weights can be found here: https://github.com/mlfoundations/open_clip#pretrained-model-interface RN50::openai RN50::yfcc15m RN50::cc12m RN50-quickgelu::openai RN50-quickgelu::yfcc15m RN50-quickgelu::cc12m RN101::openai RN101::yfcc15m RN101-quickgelu::openai RN101-quickgelu::yfcc15m RN50x4::openai RN50x16::openai RN50x64::openai ViT-B-32::openai ViT-B-32::laion2b_e16 ViT-B-32::laion400m_e31 ViT-B-32::laion400m_e32 ViT-B-32-quickgelu::openai ViT-B-32-quickgelu::laion400m_e31 ViT-B-32-quickgelu::laion400m_e32 ViT-B-16::openai ViT-B-16::laion400m_e31 ViT-B-16::laion400m_e32 ViT-B-16-plus-240::laion400m_e31 ViT-B-16-plus-240::laion400m_e32 ViT-L-14::openai ViT-L-14-336::openai
+    #pretrained-model-interface RN50::openai RN50::yfcc15m RN50::cc12m RN50-quickgelu::openai RN50-quickgelu::yfcc15m RN50-quickgelu::cc12m RN101::openai RN101::yfcc15m RN101-quickgelu::openai RN101-quickgelu::yfcc15m RN50x4::openai RN50x16::openai RN50x64::openai ViT-B-32::openai ViT-B-32::laion2b_e16 ViT-B-32::laion400m_e31 ViT-B-32::laion400m_e32 ViT-B-32-quickgelu::openai ViT-B-32-quickgelu::laion400m_e31 ViT-B-32-quickgelu::laion400m_e32 ViT-B-16::openai ViT-B-16::laion400m_e31 ViT-B-16::laion400m_e32 ViT-B-16-plus-240::laion400m_e31 ViT-B-16-plus-240::laion400m_e32 ViT-L-14::openai ViT-L-14-336::openai
+    :param clip_models: CLIP Model selectors. These various CLIP models are available for you to use during image generation.  Models have different styles or ‘flavors,’ so look around.  You can mix in multiple models as well for different results. However, keep in mind that some models are extremely memory-hungry, and turning on additional models will take additional memory and may cause a crash.Also supported open_clip pretrained models, use `::` to separate model name and pretrained weight name, e.g. `ViT-B/32::laion2b_e16`. Full list of models and weights can be found here: https://github.com/mlfoundations/open_clip
     :param use_vertical_symmetry: Enforce symmetry over x axis of the image on [tr_ststeps for tr_st in transformation_steps] steps of the diffusion process
     :param use_horizontal_symmetry: Enforce symmetry over y axis of the image on [tr_ststeps for tr_st in transformation_steps] steps of the diffusion process
     :param transformation_steps: Steps (expressed in percentages) in which the symmetry is enforced
@@ -174,11 +176,13 @@ def create(**kwargs) -> Optional['DocumentArray']:
         d = kwargs['init_document']
         _kwargs = d.tags
         if not _kwargs:
-            warnings.warn('init_document has no .tags, fallback to default config')
+            warnings.warn(
+                'init_document has no .tags, fallback to default config')
         if d.uri:
             _kwargs['init_image'] = kwargs['init_document'].uri
         else:
-            warnings.warn('init_document has no .uri, fallback to no init image')
+            warnings.warn(
+                'init_document has no .uri, fallback to no init image')
         kwargs.pop('init_document')
         if kwargs:
             warnings.warn(
@@ -204,57 +208,50 @@ def create(**kwargs) -> Optional['DocumentArray']:
     gc.collect()
     torch.cuda.empty_cache()
 
+    do_run(_args, (model, diffusion, clip_models, secondary_model), device)
+
+    _name = _args.name_docarray
+
+    if not os.path.exists(f'{_name}.protobuf.lz4'):
+        # not even a single document was created
+        return
     try:
-        do_run(_args, (model, diffusion, clip_models, secondary_model), device)
-    except KeyboardInterrupt:
-        pass
-    except:
-        print("GOT ERROR FROM do_run")
-        raise
-    finally:
+        from IPython import display
+    except ImportError:
+        display = Nothing()
 
-        _name = _args.name_docarray
+    display.clear_output(wait=True)
 
-        if not os.path.exists(f'{_name}.protobuf.lz4'):
-            # not even a single document was created
-            return
-        try: 
-            from IPython import display
-        except ImportError:
-            display = Nothing()
+    from docarray import DocumentArray
 
-        display.clear_output(wait=True)
-
-        from docarray import DocumentArray
-
-        _da = DocumentArray.load_binary(f'{_name}.protobuf.lz4')
-        if _da and _da[0].uri:
-            _da.plot_image_sprites(
-                skip_empty=True, show_index=True, keep_aspect_ratio=True
-            )
-        result = _da
-
-        print_args_table(vars(_args))
-        try:
-            from IPython.display import FileLink, display
-        except ImportError:
-            FileLink = display = Nothing()
-
-        persist_file = FileLink(
-            f'{_name}.protobuf.lz4',
-            result_html_prefix=f'▶ Download the local backup (in case cloud storage failed): ',
+    _da = DocumentArray.load_binary(f'{_name}.protobuf.lz4')
+    if _da and _da[0].uri:
+        _da.plot_image_sprites(
+            skip_empty=True, show_index=True, keep_aspect_ratio=True
         )
-        config_file = FileLink(
-            f'{_name}.svg',
-            result_html_prefix=f'▶ Download the config as SVG image: ',
-        )
-        display(config_file, persist_file)
+    result = _da
 
-        from rich import print
-        from rich.markdown import Markdown
+    print_args_table(vars(_args))
+    try:
+        from IPython.display import FileLink, display
+    except ImportError:
+        FileLink = display = Nothing()
 
-        md = Markdown(
-            f'''
+    persist_file = FileLink(
+        f'{_name}.protobuf.lz4',
+        result_html_prefix=f'▶ Download the local backup (in case cloud storage failed): ',
+    )
+    config_file = FileLink(
+        f'{_name}.svg',
+        result_html_prefix=f'▶ Download the config as SVG image: ',
+    )
+    display(config_file, persist_file)
+
+    from rich import print
+    from rich.markdown import Markdown
+
+    md = Markdown(
+        f'''
 Results are stored in a [DocumentArray](https://docarray.jina.ai/fundamentals/documentarray/) and synced to the cloud.
 
 You can simply pull it from any machine:
@@ -273,12 +270,12 @@ da = DocumentArray.load_binary('{_name}.protobuf.lz4')
 ```
 
 More usage such as plotting, post-analysis can be found in the [README](https://github.com/jina-ai/discoart).
-        ''',
-            code_theme='igor',
-        )
-        print(md)
+    ''',
+        code_theme='igor',
+    )
+    print(md)
 
-        gc.collect()
-        torch.cuda.empty_cache()
+    gc.collect()
+    torch.cuda.empty_cache()
 
     return result
