@@ -206,6 +206,7 @@ def do_run(args, models, device) -> 'DocumentArray':
                         image_embeds.unsqueeze(1),
                         model_stat['target_embeds'].unsqueeze(0),
                     )
+                    print("dists is of shape", dists.shape)
                     dists = dists.view(
                         [
                             cut_overview[1000 - t_int] + cut_innercut[1000 - t_int],
