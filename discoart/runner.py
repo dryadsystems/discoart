@@ -290,7 +290,7 @@ def do_run(args, models, device) -> 'DocumentArray':
 
         cur_t = diffusion.num_timesteps - skip_steps - 1
 
-        print(f"GOT PAST CUR_T")
+        print(f"GOT PAST CUR_T, courteous")
 
         if args.perlin_init:
             print("ABOUT TO DO REGEN PERLIN")
@@ -298,7 +298,7 @@ def do_run(args, models, device) -> 'DocumentArray':
                 args.perlin_mode, args.side_y, side_x, device, args.batch_size
             )
         
-        print(f"ABOUT TO DO SAMPLING FUNCTION sample_fn", sample_fn)
+        print(f"ABOUT TO DO SAMPLING FUNCTION sample_fn")
         if args.diffusion_sampling_mode == 'ddim':
             samples = sample_fn(
                 model,
