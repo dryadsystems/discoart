@@ -180,7 +180,7 @@ def do_run(args, models, device) -> 'DocumentArray':
                 for i in range(args.cutn_batches):
                     print("t is", t)
                     t_int = (
-                        int(t.item()) + 1
+                        int(t[0].item()) + 1
                     )  # errors on last step without +1, need to find source
                     # when using SLIP Base model the dimensions need to be hard coded to avoid AttributeError: 'VisionTransformer' object has no attribute 'input_resolution'
                     try:
