@@ -271,13 +271,17 @@ def do_run(args, models, device) -> 'DocumentArray':
         args.seed = new_seed
         pgbar = '▰' * (_nb + 1) + '▱' * (args.n_batches - _nb - 1)
 
+        print(f"GOT TO BEFORE DISPLAY")
         display.display(
             Text(f'n_batches={args.n_batches}: {pgbar}'),
             print_args_table(vars(args), only_non_default=True, console_print=False),
             image_display,
         )
+        print(f"GOT TO AFTER DISPLAY")
         gc.collect()
+        print(f"GOT TO AFTER GC")
         torch.cuda.empty_cache()
+        print(f"GOT TO AFTER EMPTY CACHE")
 
         print(f"GOT PAST CUDA EMPTY CACHE")
 
