@@ -178,6 +178,7 @@ def do_run(args, models, device) -> 'DocumentArray':
                 x_in_grad = torch.zeros_like(x_in)
             for model_stat in model_stats:
                 for i in range(args.cutn_batches):
+                    print("t is", t)
                     t_int = (
                         int(t.item()) + 1
                     )  # errors on last step without +1, need to find source
