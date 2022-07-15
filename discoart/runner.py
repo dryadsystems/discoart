@@ -264,7 +264,7 @@ def do_run(args, models, device) -> 'DocumentArray':
 
     org_seed = args.seed
     for _nb in range(args.n_batches):
-
+        print(f"RUNNING BATCH {_nb}")
         # set seed for each image in the batch
         new_seed = org_seed + _nb
         _set_seed(new_seed)
@@ -288,7 +288,8 @@ def do_run(args, models, device) -> 'DocumentArray':
             init = regen_perlin(
                 args.perlin_mode, args.side_y, side_x, device, args.batch_size
             )
-
+        
+        print(f"ABOUT TO DO SAMPLING FUNCTION {sample_fn.__file__}")
         if args.diffusion_sampling_mode == 'ddim':
             samples = sample_fn(
                 model,
@@ -319,7 +320,8 @@ def do_run(args, models, device) -> 'DocumentArray':
                 randomize_class=args.randomize_class,
                 order=2,
             )
-
+        
+        print(f"Doing something for each sample", samples)
         threads = []
         for j, sample in enumerate(samples):
             cur_t -= 1

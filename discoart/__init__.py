@@ -209,6 +209,7 @@ def create(**kwargs) -> Optional['DocumentArray']:
     except KeyboardInterrupt:
         pass
     except:
+        print("GOT ERROR FROM do_run")
         raise
     finally:
 
