@@ -293,11 +293,12 @@ def do_run(args, models, device) -> 'DocumentArray':
         print(f"GOT PAST CUR_T")
 
         if args.perlin_init:
+            print("ABOUT TO DO REGEN PERLIN")
             init = regen_perlin(
                 args.perlin_mode, args.side_y, side_x, device, args.batch_size
             )
         
-        print(f"ABOUT TO DO SAMPLING FUNCTION {sample_fn.__code__.co_filename}")
+        print(f"ABOUT TO DO SAMPLING FUNCTION sample_fn", sample_fn)
         if args.diffusion_sampling_mode == 'ddim':
             samples = sample_fn(
                 model,
