@@ -279,10 +279,14 @@ def do_run(args, models, device) -> 'DocumentArray':
         gc.collect()
         torch.cuda.empty_cache()
 
+        print(f"GOT PAST CUDA EMPTY CACHE")
+
         d = Document(tags=vars(args))
         da_batches.append(d)
 
         cur_t = diffusion.num_timesteps - skip_steps - 1
+
+        print(f"GOT PAST CUR_T")
 
         if args.perlin_init:
             init = regen_perlin(
