@@ -15,7 +15,7 @@ class Nothing:
     def __call__(self, *args, **kwargs):
         return Nothing()
 
-    __getattr__ = __enter__ = __exit__ = __call__
+    __getattr__ = __getitem__ = __index__ = __enter__ = __exit__ = __call__
 
 
 import sys
@@ -56,7 +56,10 @@ model_config, secondary_model = load_all_models(
 from typing import TYPE_CHECKING, overload, List, Optional
 
 if TYPE_CHECKING:
-    from docarray import DocumentArray, Document
+    try:
+        from docarray import DocumentArray, Document
+    except ImportError:
+        DocumentArray = Document = Nothing()
 
 _clip_models_cache = {}
 
@@ -79,7 +82,7 @@ def create(
     tv_scale: Optional[int] = 0,
     range_scale: Optional[int] = 150,
     sat_scale: Optional[int] = 0,
-    cutn_batches: Optional[int] = 4,
+    cutn_batches: Optional[int] = 2,
     diffusion_model: Optional[str] = '512x512_diffusion_uncond_finetune_008100',
     use_secondary_model: Optional[bool] = True,
     diffusion_sampling_mode: Optional[str] = 'ddim',
@@ -189,7 +192,7 @@ def create(**kwargs) -> Optional['DocumentArray']:
     else:
         _args = load_config(user_config=kwargs)
 
-    save_config_svg(_args)
+    #save_config_svg(_args)
 
     _args = SimpleNamespace(**_args)
 
@@ -205,7 +208,7 @@ def create(**kwargs) -> Optional['DocumentArray']:
     torch.cuda.empty_cache()
 
     try:
-        do_run(_args, (model, diffusion, clip_models, secondary_model), device)
+        return do_run(_args, (model, diffusion, clip_models, secondary_model), device)
     except KeyboardInterrupt:
         pass
     except Exception as ex:
@@ -226,58 +229,58 @@ def create(**kwargs) -> Optional['DocumentArray']:
 
         display.clear_output(wait=True)
 
-        from docarray import DocumentArray
+#         from docarray import DocumentArray
 
-        _da = DocumentArray.load_binary(f'{_name}.protobuf.lz4')
-        if _da and _da[0].uri:
-            _da.plot_image_sprites(
-                skip_empty=True, show_index=True, keep_aspect_ratio=True
-            )
-        result = _da
+#         _da = DocumentArray.load_binary(f'{_name}.protobuf.lz4')
+#         if _da and _da[0].uri:
+#             _da.plot_image_sprites(
+#                 skip_empty=True, show_index=True, keep_aspect_ratio=True
+#             )
+#         result = _da
 
-        print_args_table(vars(_args))
-        try:
-            from IPython.display import FileLink, display
-        except ImportError:
-            FileLink = display = Nothing()
+#         print_args_table(vars(_args))
+#         try:
+#             from IPython.display import FileLink, display
+#         except ImportError:
+#             FileLink = display = Nothing()
 
-        persist_file = FileLink(
-            f'{_name}.protobuf.lz4',
-            result_html_prefix=f'▶ Download the local backup (in case cloud storage failed): ',
-        )
-        config_file = FileLink(
-            f'{_name}.svg',
-            result_html_prefix=f'▶ Download the config as SVG image: ',
-        )
-        display(config_file, persist_file)
+#         persist_file = FileLink(
+#             f'{_name}.protobuf.lz4',
+#             result_html_prefix=f'▶ Download the local backup (in case cloud storage failed): ',
+#         )
+#         config_file = FileLink(
+#             f'{_name}.svg',
+#             result_html_prefix=f'▶ Download the config as SVG image: ',
+#         )
+#         display(config_file, persist_file)
 
-        from rich import print
-        from rich.markdown import Markdown
+#         from rich import print
+#         from rich.markdown import Markdown
 
-        md = Markdown(
-            f'''
-Results are stored in a [DocumentArray](https://docarray.jina.ai/fundamentals/documentarray/) and synced to the cloud.
+#         md = Markdown(
+#             f'''
+# Results are stored in a [DocumentArray](https://docarray.jina.ai/fundamentals/documentarray/) and synced to the cloud.
 
-You can simply pull it from any machine:
+# You can simply pull it from any machine:
 
-```python
-# pip install docarray[common]
-from docarray import DocumentArray
+# ```python
+# # pip install docarray[common]
+# from docarray import DocumentArray
 
-da = DocumentArray.pull('{_name}')
-```
+# da = DocumentArray.pull('{_name}')
+# ```
 
-If for some reason the cloud storage is not available, you may also download the file manually and load it from local disk:
+# If for some reason the cloud storage is not available, you may also download the file manually and load it from local disk:
 
-```python
-da = DocumentArray.load_binary('{_name}.protobuf.lz4')
-```
+# ```python
+# da = DocumentArray.load_binary('{_name}.protobuf.lz4')
+# ```
 
-More usage such as plotting, post-analysis can be found in the [README](https://github.com/jina-ai/discoart).
-        ''',
-            code_theme='igor',
-        )
-        print(md)
+# More usage such as plotting, post-analysis can be found in the [README](https://github.com/jina-ai/discoart).
+#         ''',
+#             code_theme='igor',
+#         )
+#         print(md)
 
         gc.collect()
         torch.cuda.empty_cache()

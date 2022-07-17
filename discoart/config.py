@@ -3,7 +3,19 @@ import random
 from typing import Dict, Union, Optional
 
 import yaml
-from docarray import DocumentArray, Document
+
+class Nothing:
+    def __call__(self, *args, **kwargs):
+        return Nothing()
+
+    __getattr__ = __getitem__ = __index__ = __enter__ = __exit__ = __call__
+
+
+try:
+    from docarray import DocumentArray, Document
+except:
+    DocumentArray = Document = Nothing()
+
 from yaml import Loader
 
 from . import __resources_path__
