@@ -1,4 +1,5 @@
 import gc
+import logging
 import random
 import threading
 from threading import Thread
@@ -334,7 +335,9 @@ def do_run(args, models, device) -> Image:  #'DocumentArray':
             with image_display:
                 if j % args.display_rate == 0 or cur_t == -1:
                     for _, image in enumerate(sample["pred_xstart"]):
+                        logging.info(image)
                         image = TF.to_pil_image(image.add(1).div(2).clamp(0, 1))
+                        logging.info(image)
                         return image
                         c = Document(tags={"cur_t": cur_t})
                         c.load_pil_image_to_datauri(image)
@@ -361,7 +364,7 @@ def do_run(args, models, device) -> Image:  #'DocumentArray':
         for t in threads:
             t.join()
         display.clear_output(wait=True)
-
+    print("something went wrong")
     logger.info(f"done! {args.name_docarray}")
 
     return da_batches

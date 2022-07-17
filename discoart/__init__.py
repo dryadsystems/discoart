@@ -213,7 +213,7 @@ def create(**kwargs) -> Optional['DocumentArray']:
         pass
     except Exception as ex:
         from .helper import logger
-
+        print(f"{ex!r}")
         logger.error(f'{ex!r}')
     finally:
 
