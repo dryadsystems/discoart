@@ -41,6 +41,7 @@ COPY --from=cache /root/.cache/ /root/.cache/
 COPY --from=libbuilder /app/venv/lib/python3.10/site-packages /app/
 RUN mkdir /app/output
 COPY ./discoart/ /app/discoart/
-RUN python3.10 -c "import discoart; discoart.create(steps=3, diffusion_sampling_mode='plms', width_height=[16, 16])" || true
+RUN python3.10 -c "import discoart; discoart.create(steps=3, diffusion_sampling_mode='plms')" || true
 COPY ./pqueue.py ./config.py ./run.py /app/
+ENV DISCOART_LOG_LEVEL="DEBUG"
 ENTRYPOINT ["/usr/bin/python3.10", "/app/run.py"]
