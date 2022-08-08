@@ -1,3 +1,7 @@
+ARG PQUEUE_VERSION
+FROM pqueue:$PQUEUE_VERSION as pqueue
+
+
 FROM python:3.10 as libbuilder
 WORKDIR /app
 RUN python3.10 -m venv /app/venv 
